@@ -41,12 +41,13 @@ This repo uses `pre-commit` to catch common issues before commits, including sec
 Install + enable:
 
 ```bash
-python3 -m pip install --user pre-commit
-pre-commit install
+python3 -m venv .venv
+.venv/bin/pip install pre-commit
+.venv/bin/pre-commit install
 ```
 
 Run on demand:
 
 ```bash
-pre-commit run --all-files
+.venv/bin/pre-commit run --all-files
 ```
