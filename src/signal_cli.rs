@@ -10,6 +10,31 @@ pub struct Contact {
     pub name: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct ContactJson {
+    number: Option<String>,
+    name: Option<String>,
+    #[serde(rename = "givenName")]
+    given_name: Option<String>,
+    #[serde(rename = "familyName")]
+    family_name: Option<String>,
+    #[serde(rename = "nickName")]
+    nick_name: Option<String>,
+    #[serde(rename = "nickGivenName")]
+    nick_given_name: Option<String>,
+    #[serde(rename = "nickFamilyName")]
+    nick_family_name: Option<String>,
+    profile: Option<ProfileJson>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProfileJson {
+    #[serde(rename = "givenName")]
+    given_name: Option<String>,
+    #[serde(rename = "familyName")]
+    family_name: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Group {
     pub id: String,
@@ -55,23 +80,22 @@ impl SignalCli {
     }
 
     pub fn list_contacts(&self, account: &str) -> Result<Vec<Contact>> {
-        #[derive(Debug, Deserialize)]
-        struct ContactJson {
-            number: Option<String>,
-            name: Option<String>,
-        }
-
-        let v = self.run_json(["-a", account, "-o", "json", "listContacts"])?;
+        // `--all-recipients` includes non-address-book recipients with profile names.
+        let v = self.run_json([
+            "-a",
+            account,
+            "-o",
+            "json",
+            "listContacts",
+            "--all-recipients",
+        ])?;
         let Some(v) = v else { return Ok(vec![]); };
         let raw: Vec<ContactJson> =
             serde_json::from_value(v).context("parse listContacts JSON")?;
         let mut out = Vec::new();
         for c in raw {
+            let name = best_contact_name(&c);
             let Some(number) = c.number else { continue; };
-            let name = c.name.and_then(|s| {
-                let t = s.trim();
-                if t.is_empty() { None } else { Some(t.to_string()) }
-            });
             out.push(Contact {
                 number,
                 name,
@@ -251,4 +275,31 @@ impl SignalCli {
         }
         Ok(Some(Value::Array(items)))
     }
+}
+
+fn best_contact_name(c: &ContactJson) -> Option<String> {
+    // Prefer explicit local contact name, then OS-style fields, then profile.
+    fn clean(s: &str) -> Option<String> {
+        let t = s.trim();
+        if t.is_empty() { None } else { Some(t.to_string()) }
+    }
+    fn join2(a: &Option<String>, b: &Option<String>) -> Option<String> {
+        let a = a.as_deref().and_then(clean);
+        let b = b.as_deref().and_then(clean);
+        match (a, b) {
+            (Some(x), Some(y)) => Some(format!("{x} {y}")),
+            (Some(x), None) => Some(x),
+            (None, Some(y)) => Some(y),
+            (None, None) => None,
+        }
+    }
+
+    c.name.as_deref().and_then(clean)
+        .or_else(|| join2(&c.given_name, &c.family_name))
+        .or_else(|| c.nick_name.as_deref().and_then(clean))
+        .or_else(|| join2(&c.nick_given_name, &c.nick_family_name))
+        .or_else(|| {
+            let p = c.profile.as_ref()?;
+            join2(&p.given_name, &p.family_name)
+        })
 }

@@ -28,6 +28,23 @@ On first run, `signal-tui` creates:
 
 Scrollback is stored as JSONL (one JSON object per line) per conversation.
 
+## Pretty Names
+
+`signal-tui` shows the best name it can get from `signal-cli listContacts --all-recipients` (contact name, given/family, nick fields, then profile name).
+
+If you want local overrides, add them to `~/.config/signal-tui/config.toml`:
+
+```toml
+[aliases]
+"+15551234567" = "Alice"
+```
+
+You can also set names in `signal-cli` itself:
+
+```bash
+signal-cli -a <your_account> updateContact -n "Alice" +15551234567
+```
+
 ## Keys
 
 - `j`/`k` (or arrows): move

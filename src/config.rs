@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -10,6 +11,7 @@ pub struct Config {
     pub scrollback_load_limit: usize,
     pub save_scrollback: bool,
     pub notify: bool,
+    pub aliases: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +20,7 @@ struct ConfigFile {
     scrollback_load_limit: Option<usize>,
     save_scrollback: Option<bool>,
     notify: Option<bool>,
+    aliases: Option<HashMap<String, String>>,
 }
 
 impl Default for ConfigFile {
@@ -27,6 +30,7 @@ impl Default for ConfigFile {
             scrollback_load_limit: Some(500),
             save_scrollback: Some(true),
             notify: Some(true),
+            aliases: Some(HashMap::new()),
         }
     }
 }
@@ -65,6 +69,7 @@ pub fn load_or_create(config_path_override: Option<PathBuf>) -> Result<Config> {
         scrollback_load_limit: cf.scrollback_load_limit.unwrap_or(500).clamp(50, 100_000),
         save_scrollback: cf.save_scrollback.unwrap_or(true),
         notify: cf.notify.unwrap_or(true),
+        aliases: cf.aliases.unwrap_or_default(),
     })
 }
 
@@ -120,6 +125,12 @@ scrollback_dir = "{p}"
 scrollback_load_limit = 500
 save_scrollback = true
 notify = true
+
+# Optional: local "address book" overrides for display names (E.164 numbers).
+#
+# [aliases]
+# "+15551234567" = "Alice"
+# "+15557654321" = "Bob"
 "#,
         p = default_scrollback.display()
     )

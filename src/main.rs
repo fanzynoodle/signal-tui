@@ -121,7 +121,12 @@ fn main() -> Result<()> {
 
     let mut targets = Vec::new();
     for c in signal.list_contacts(&account).unwrap_or_default() {
-        let display = c.name.unwrap_or_else(|| c.number.clone());
+        let display = cfg
+            .aliases
+            .get(&c.number)
+            .cloned()
+            .or(c.name)
+            .unwrap_or_else(|| c.number.clone());
         targets.push(Target {
             conversation_key: format!("contact:{}", c.number),
             kind: TargetKind::Contact,
@@ -286,7 +291,8 @@ fn ingest_incoming(app: &mut App, msgs: Vec<IncomingMessage>) {
             let (kind, addr, display) = if let Some(rest) = m.conversation_key.strip_prefix("group:") {
                 (TargetKind::Group, rest.to_string(), format!("group {rest}"))
             } else if let Some(rest) = m.conversation_key.strip_prefix("contact:") {
-                (TargetKind::Contact, rest.to_string(), rest.to_string())
+                let disp = app.cfg.aliases.get(rest).cloned().unwrap_or_else(|| rest.to_string());
+                (TargetKind::Contact, rest.to_string(), disp)
             } else {
                 continue;
             };
@@ -487,11 +493,17 @@ fn handle_key_add_recipient(app: &mut App, k: KeyEvent) -> Result<bool> {
             }
             let key = format!("contact:{num}");
             if !app.targets.iter().any(|t| t.conversation_key == key) {
+                let display = app
+                    .cfg
+                    .aliases
+                    .get(&num)
+                    .cloned()
+                    .unwrap_or_else(|| num.clone());
                 app.targets.push(Target {
                     conversation_key: key,
                     kind: TargetKind::Contact,
                     addr: num.clone(),
-                    display: num.clone(),
+                    display,
                 });
                 app.targets
                     .sort_by(|a, b| a.display.to_lowercase().cmp(&b.display.to_lowercase()));
