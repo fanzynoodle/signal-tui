@@ -1,0 +1,13 @@
+/target
+
+# Local dev tooling
+.pre-commit-cache/
+.venv/
+
+# Common secret-ish local files
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
