@@ -2,6 +2,10 @@
 
 Tiny Rust TUI on top of your existing `signal-cli` config (no extra login).
 
+## License
+
+MIT (see `LICENSE`).
+
 ## Run
 
 ```bash
